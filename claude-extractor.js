@@ -517,16 +517,16 @@
             let fileIndex = startIndex;
             
             // Pattern 1: Look for artifact function calls (new format)
-            const artifactCallRegex = /<function_calls>[\s\S]*?<invoke name="artifacts">([\s\S]*?)<\/antml:invoke>[\s\S]*?<\/function_calls>/g;
+            const artifactCallRegex = /<function_calls>[\s\S]*?<invoke name="artifacts">([\s\S]*?)<\/antml:invoke>[\s\S]*?<\/antml:function_calls>/g;
             let callMatch;
             
             while ((callMatch = artifactCallRegex.exec(output)) !== null) {
                 const artifactContent = callMatch[1];
                 
                 // Extract type and content from artifact parameters
-                const typeMatch = artifactContent.match(/<parameter name="type">(.*?)<\/parameter>/);
-                const contentMatch = artifactContent.match(/<parameter name="content">([\s\S]*?)<\/parameter>/);
-                const titleMatch = artifactContent.match(/<parameter name="title">(.*?)<\/parameter>/);
+                const typeMatch = artifactContent.match(/<parameter name="type">(.*?)<\/antml:parameter>/);
+                const contentMatch = artifactContent.match(/<parameter name="content">([\s\S]*?)<\/antml:parameter>/);
+                const titleMatch = artifactContent.match(/<parameter name="title">(.*?)<\/antml:parameter>/);
                 
                 if (contentMatch && contentMatch[1].trim()) {
                     const type = typeMatch ? typeMatch[1] : 'text';
@@ -550,9 +550,7 @@
             
             // Pattern 2: Look for legacy artifact patterns (backup)
             const legacyPatterns = [
-                // "I'll create a [type] artifact"
                 /I'll create (?:a |an )?(\w+)\s+artifact.*?```(\w+)?\n([\s\S]*?)```/gi,
-                // "Here's a [type] component/application"
                 /Here's (?:a |an )?(\w+)\s+(?:component|application|tool|page).*?```(\w+)?\n([\s\S]*?)```/gi
             ];
             
@@ -589,7 +587,6 @@
                 while ((match = patternObj.pattern.exec(output)) !== null) {
                     const content = match[1].trim();
                     if (content.length > 200 && !isDuplicateContent(content, artifactFiles)) {
-                        // Check if this looks like a substantial application/component
                         if (isLikelyArtifact(content, patternObj.name.toLowerCase())) {
                             const fileName = `${patternObj.name.toLowerCase()}-component-${fileIndex}.${patternObj.extension}`;
                             artifactFiles.push({
@@ -620,7 +617,6 @@
                 const content = match[2].trim();
                 
                 if (content && content.length > 20 && !isDuplicateContent(content, codeFiles)) {
-                    // Skip if this looks like it was already captured as an artifact
                     if (!isLikelyArtifact(content, language)) {
                         const fileName = generateFileName(content, language, fileIndex);
                         codeFiles.push({
@@ -651,21 +647,16 @@
         }
 
         function isLikelyArtifact(content, language) {
-            // Check if content looks like a substantial application/component
             const artifactIndicators = [
-                // HTML indicators
                 content.includes('<!DOCTYPE html'),
                 content.includes('<html'),
                 content.includes('<div') && content.length > 500,
-                // React indicators
                 content.includes('import React') || content.includes('import {'),
                 content.includes('export default') && (content.includes('function') || content.includes('=>')),
                 content.includes('useState') || content.includes('useEffect'),
-                // JavaScript app indicators
                 content.includes('document.') && content.length > 300,
                 content.includes('addEventListener') && content.length > 200,
                 content.includes('class ') && content.includes('constructor'),
-                // CSS indicators for substantial stylesheets
                 language === 'css' && content.length > 1000
             ];
             return artifactIndicators.some(indicator => indicator);
@@ -707,7 +698,6 @@
         }
 
         function generateFileName(content, language, index) {
-            // Try to detect file type from content
             if (content.includes('<!DOCTYPE html') || content.includes('<html')) {
                 return `index${index > 1 ? `-${index}` : ''}.html`;
             }
@@ -727,22 +717,10 @@
                 return `main${index}.cpp`;
             }
             
-            // Default naming based on language
             const extensions = {
-                javascript: 'js',
-                python: 'py',
-                html: 'html',
-                css: 'css',
-                java: 'java',
-                cpp: 'cpp',
-                c: 'c',
-                php: 'php',
-                ruby: 'rb',
-                go: 'go',
-                rust: 'rs',
-                typescript: 'ts',
-                jsx: 'jsx',
-                tsx: 'tsx'
+                javascript: 'js', python: 'py', html: 'html', css: 'css',
+                java: 'java', cpp: 'cpp', c: 'c', php: 'php', ruby: 'rb',
+                go: 'go', rust: 'rs', typescript: 'ts', jsx: 'jsx', tsx: 'tsx'
             };
             
             const ext = extensions[language] || 'txt';
@@ -750,7 +728,6 @@
         }
 
         function determineFilePath(fileName, content) {
-            // Determine appropriate directory structure
             if (fileName.endsWith('.html')) return fileName;
             if (fileName.endsWith('.css')) return `css/${fileName}`;
             if (fileName.endsWith('.js') && !fileName.includes('script')) return `js/${fileName}`;
@@ -761,24 +738,13 @@
         }
 
         function hasNodeJSIndicators(output) {
-            const indicators = [
-                'npm install',
-                'require(',
-                'module.exports',
-                'express',
-                'node.js',
-                'nodejs',
-                'package.json',
-                'npm start'
-            ];
-            return indicators.some(indicator => 
-                output.toLowerCase().includes(indicator.toLowerCase()));
+            const indicators = ['npm install', 'require(', 'module.exports', 'express', 'node.js', 'nodejs', 'package.json', 'npm start'];
+            return indicators.some(indicator => output.toLowerCase().includes(indicator.toLowerCase()));
         }
 
         function generatePackageJson(projectName, output) {
             const dependencies = {};
             
-            // Detect common dependencies
             if (output.includes('express')) dependencies.express = '^4.18.0';
             if (output.includes('react')) dependencies.react = '^18.0.0';
             if (output.includes('axios')) dependencies.axios = '^1.0.0';
@@ -833,3 +799,8 @@
                 language: 'markdown',
                 path: 'README.md',
                 source: 'generated'
+            };
+        }
+
+        function displayExtractedFiles() {
+            const container =
